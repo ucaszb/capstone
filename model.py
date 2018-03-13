@@ -12,12 +12,12 @@ from keras.preprocessing.image import *
 np.random.seed(2018)
 
 
-def link(basedir, file_name, driver_id_list):
+def link(basedir, file_name, driver_imgs_list, driver_id_list):
     os.mkdir(basedir + file_name)
     for i in range(10):
         os.mkdir(basedir + file_name + "/c%d"%i)
     for driver_id in driver_id_list:
-        df_part = df[df['subject'] == driver_id]
+        df_part = driver_imgs_list[driver_imgs_list['subject'] == driver_id]
         for index, row in df_part.iterrows():
             subpath = row["classname"] + "/" + row["img"]
             src = basedir + "train/" + subpath 
@@ -25,7 +25,7 @@ def link(basedir, file_name, driver_id_list):
             os.link(src, dst)
 
 
-def train_valid_split(group, valid_drivers):
+def train_valid_split(basedir, group, driver_imgs_list, driver_list, valid_drivers):
     train_drivers = [i for i in driver_list if i not in valid_drivers]
     link(basedir, 'train'+str(group), train_drivers)
     link(basedir, 'valid'+str(group), valid_drivers)
@@ -74,14 +74,7 @@ def predict_model(model, test_generator, steps_test_sample):
     return y_pred
 
 
-def submission(result, fname):
-    results = np.array([])
-    for i, imgname in enumerate(test_generator.filenames):
-        name = imgname[imgname.rfind('/')+1:]
-        results.append([name, *result[i]])
-    data = {'img': results[:,0]}
-    for i in range(10):
-        data['c%d'%i] = results[:,i+1]
-    df = pd.DataFrame(data, columns=['img'] + ['c%d'%i for i in range(10)])
-    df = df.sort_values(by='img')
-    df.to_csv(fname, index=None)
+def submission(df, result, fname):
+    for i in range(result.shape[0]):
+        df.iloc[i,1:11] = result[i]    
+        df.to_csv(fname, index=None)
