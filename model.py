@@ -3,6 +3,7 @@
 import os
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from keras.models import *
 from keras.layers import *
 from keras.optimizers import *
@@ -27,8 +28,8 @@ def link(basedir, file_name, driver_imgs_list, driver_id_list):
 
 def train_valid_split(basedir, group, driver_imgs_list, driver_list, valid_drivers):
     train_drivers = [i for i in driver_list if i not in valid_drivers]
-    link(basedir, 'train'+str(group), train_drivers)
-    link(basedir, 'valid'+str(group), valid_drivers)
+    link(basedir, 'train'+str(group), driver_imgs_list, train_drivers)
+    link(basedir, 'valid'+str(group), driver_imgs_list, valid_drivers)
 
     
 def test_gen(gen, basedir, model_image_size, batch_size):
@@ -70,11 +71,11 @@ def train_model(model, optimizer, epoch, train_generator, valid_generator, steps
     
     
 def predict_model(model, test_generator, steps_test_sample):
-    y_pred = model.predict_generator(test_generator, steps=test_generator.samples//batch_size+1, verbose=1)
+    y_pred = model.predict_generator(test_generator, steps=steps_test_sample, verbose=1)
     return y_pred
 
 
 def submission(df, result, fname):
-    for i in range(result.shape[0]):
+    for i in tqdm(range(result.shape[0])):
         df.iloc[i,1:11] = result[i]    
-        df.to_csv(fname, index=None)
+    df.to_csv(fname, index=None)
