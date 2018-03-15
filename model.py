@@ -3,6 +3,8 @@
 import os
 import numpy as np
 import pandas as pd
+import cv2
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 from keras.models import *
 from keras.layers import *
@@ -79,3 +81,21 @@ def submission(df, result, fname):
     for i in tqdm(range(result.shape[0])):
         df.iloc[i,1:11] = result[i]    
     df.to_csv(fname, index=None)
+    
+    
+def cam(imgs, features, y_trues, y_preds, weights, model_image_size, idx):
+    status = ['normal driving', 'texting - right', 'phone - right', 'texting - left', 'phone - left', 'operating the radio', 'drinking', 'reaching behind', 'hair and makeup', 'talking to passenger']
+    plt.figure()
+    plt.axis('off')
+    y_true = np.argmax(y_trues[idx])
+    prediction = y_preds[idx]
+    y_pred = np.argmax(prediction)
+    plt.title('True: %s | Pred: %s %.2f%%' % (status[y_true], status[y_pred], prediction[y_pred]*100))
+    cam = np.matmul(features[idx], weights[:,y_pred])
+    cam -= cam.min()
+    cam /= cam.max()
+    cam = cv2.resize(cam, (model_image_size[1],model_image_size[0]))
+    heatmap = cv2.applyColorMap(np.uint8(255*cam), cv2.COLORMAP_JET)
+    heatmap[np.where(cam <= 0.2)] = 0
+    cam_img = cv2.addWeighted(imgs[idx], 0.8, heatmap[:,:,::-1], 0.4, 0)
+    plt.imshow(cam_img)
