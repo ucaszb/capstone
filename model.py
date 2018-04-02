@@ -15,6 +15,7 @@ from keras.preprocessing.image import *
 np.random.seed(2018)
 
 
+# 按司机id与原数据集建立链接
 def link(basedir, file_name, driver_imgs_list, driver_id_list):
     os.mkdir(basedir + file_name)
     for i in range(10):
@@ -28,12 +29,14 @@ def link(basedir, file_name, driver_imgs_list, driver_id_list):
             os.link(src, dst)
 
 
+# 按司机id分离训练集验证集
 def train_valid_split(basedir, group, driver_imgs_list, driver_list, valid_drivers):
     train_drivers = [i for i in driver_list if i not in valid_drivers]
     link(basedir, 'train'+str(group), driver_imgs_list, train_drivers)
     link(basedir, 'valid'+str(group), driver_imgs_list, valid_drivers)
 
-    
+
+# 测试图片生成器
 def test_gen(gen, basedir, model_image_size, batch_size):
     
     test_generator = gen.flow_from_directory(os.path.join(basedir, 'Test'), target_size=model_image_size, shuffle=False, batch_size=batch_size, class_mode=None)
@@ -41,7 +44,8 @@ def test_gen(gen, basedir, model_image_size, batch_size):
     steps_test_sample = test_generator.samples//batch_size + 1
     return test_generator, steps_test_sample
 
-    
+
+# 训练验证图片生成器
 def tv_gen(group, train_gen, valid_gen, basedir, model_image_size, batch_size):
     
     train_generator = train_gen.flow_from_directory(os.path.join(basedir, 'train'+str(group)),  model_image_size, shuffle=True, batch_size=batch_size, class_mode="categorical")
@@ -53,6 +57,7 @@ def tv_gen(group, train_gen, valid_gen, basedir, model_image_size, batch_size):
     return train_generator, valid_generator, steps_train_sample, steps_valid_sample
 
 
+# 建立模型
 def build_model(model_name, model_image_size, fune_tune_layer):
     inputs = Input((*model_image_size, 3))
     base_model = model_name(input_tensor=inputs, weights='imagenet', include_top=False)
@@ -65,24 +70,28 @@ def build_model(model_name, model_image_size, fune_tune_layer):
     return model
 
 
+# 训练模型
 def train_model(model, optimizer, epoch, train_generator, valid_generator, steps_train_sample, steps_valid_sample):
     
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
     
     model.fit_generator(train_generator, steps_per_epoch=steps_train_sample, epochs=epoch, validation_data=valid_generator, validation_steps=steps_valid_sample)
     
-    
+
+# 模型预测
 def predict_model(model, test_generator, steps_test_sample):
     y_pred = model.predict_generator(test_generator, steps=steps_test_sample, verbose=1)
     return y_pred
 
 
+# 生成预测结果
 def submission(df, result, fname):
     for i in tqdm(range(result.shape[0])):
         df.iloc[i,1:11] = result[i]    
     df.to_csv(fname, index=None)
     
-    
+
+# cam可视化
 def cam(imgs, features, y_trues, y_preds, weights, model_image_size, idx):
     status = ['normal driving', 'texting - right', 'phone - right', 'texting - left', 'phone - left', 'operating the radio', 'drinking', 'reaching behind', 'hair and makeup', 'talking to passenger']
     plt.figure()
